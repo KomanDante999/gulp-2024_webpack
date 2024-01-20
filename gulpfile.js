@@ -10,19 +10,33 @@ const ghPages = require('gulp-gh-pages');
 const siteName = 'creative-portfolio'   // название главной страницы сайта
 const rootDir = 'app'   // корневая папка проекта
 const devDir = `${rootDir}/dev` // каталог разработки
+const libDir = '_library' // каталог пользовательских библиотек
+const serviceDir = 'service' // каталог вспомогательных файлов css/js
 const resultDir = `${rootDir}/src` // каталог вывода результатов
 const distDir = 'dist'   // папка дистрибутива
 // css
 const cssDevDir = `${devDir}/scss`    // каталог исходных css
 const cssDev = `main.scss`    // главный файл css разработки
+const cssReset = '_bootstrap-reboot' // выбор сброса стилей: _bootstrap-reboot.css, _normalize.v8.0.1.css
+const cssFonts = '_fonts' // файл подключения шрифтов
+const cssServiceFiles = [
+	`${libDir}/css/reset/${cssReset}.*`,
+	`${libDir}/css/fonts/${cssFonts}.*`,
+]
 const cssResult = `main.min.css`    // результирующий файл css
 // js
 const jsDevDir = `${devDir}/js`    // каталог исходных js
 const jsDev = `index.js`    // главный файл js разработки
+const jsMouse = `mouse-or-touch` // определение устройства ввода пользователя - тачпад или мышь
+const jsServiceFiles = [
+	`${libDir}/js/${jsMouse}.*`,
+]
 const jsResult = `index.min.js`    // результирующий файл js
 // images
 const imgDevDir = `${devDir}/img`    // каталог исходных изображений
 const spriteDevDir = `${imgDevDir}/sprite`    // каталог для svg, которые необходимо объединить в спрайт
+const faviconDir = `favicon`                  // каталог для favicon.ico 
+const faviconFile = `favicon.svg`               // файл favicon.ico 
 const imgResultDir = `${resultDir}/img`    // каталог результирующих сжатых и преобразованных изображений
 // fonts
 const fontsDevDir = `${devDir}/fonts`    // каталог исходных шрифтов
@@ -30,8 +44,7 @@ const fontsResultDir = `${resultDir}/fonts`    // каталог результ�
 // html
 const htmlDevPages = `${devDir}/html-pages`
 const htmlDevComponents = `${devDir}/html-components`
-const htmlResulPages = `${resultDir}/html-pages`
-
+const htmlResultPages = `${resultDir}/html-pages`
 
 const htmlHead = `
 <!DOCTYPE html>
@@ -41,6 +54,8 @@ const htmlHead = `
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${siteName}</title>
+<link rel="icon" href="src/img/${faviconDir}/${faviconFile}">
+<!--=include fonts.html -->
 <link rel="stylesheet" href="${cssResult}">
 <script defer src="${jsResult}"></script>
 </head>`
@@ -65,11 +80,47 @@ const htmlIndex = `
 <!--=include main.html -->
 <!--=include footer.html -->
 `
+const htmlFonts = `
+<link rel="preload" href="src/fonts/Montserrat-Regular.woff2" as="font" type="font/woff2" crossorigin>
+`
+
+const cssDevContent = `
+@use 'sass:math';
+@use 'sass:color';
+
+@import '${serviceDir}/${cssReset}';
+@import '${serviceDir}/${cssFonts}';
+`
+const jsDevContent = `
+import { mouseOrTouch } from './service/mouse-or-touch';
+document.addEventListener('DOMContentLoaded', () => {
+	mouseOrTouch()
+	
+})
+`
 
 // Create project
 function createProject(cb) {
 	// создание каталогов
-	const directories = [rootDir, devDir, resultDir, htmlDevPages, htmlDevComponents, cssDevDir, jsDevDir, imgDevDir, spriteDevDir, htmlResulPages, imgResultDir, fontsDevDir, fontsResultDir, distDir];
+	const directories = [
+		rootDir,
+		devDir,
+		resultDir,
+		htmlDevPages,
+		htmlDevComponents,
+		cssDevDir,
+		`${cssDevDir}/${serviceDir}`,
+		jsDevDir,
+		`${jsDevDir}/${serviceDir}`,
+		imgDevDir,
+		spriteDevDir,
+		`${imgDevDir}/${faviconDir}`,
+		htmlResultPages,
+		imgResultDir,
+		fontsDevDir,
+		// fontsResultDir,
+		distDir
+	];
 	directories.forEach((dir) => {
 		if (!fs.existsSync(dir)) {
 			fs.mkdirSync(dir);
@@ -85,6 +136,12 @@ function createProject(cb) {
 		console.log(`Файл "head.html" успешно создан`);
 	} else {
 		console.log(`Файл "head.html" уже существует`);
+	}
+	if (!fs.existsSync(`${htmlDevComponents}/fonts.html`)) {                 // fonts preload
+		fs.writeFileSync(`${htmlDevComponents}/fonts.html`, htmlFonts);
+		console.log(`Файл "fonts.html" успешно создан`);
+	} else {
+		console.log(`Файл "fonts.html" уже существует`);
 	}
 	if (!fs.existsSync(`${htmlDevComponents}/header.html`)) {               // header
 		fs.writeFileSync(`${htmlDevComponents}/header.html`, htmlHeader);
@@ -111,25 +168,26 @@ function createProject(cb) {
 		console.log(`Файл "index.html" уже существует`);
 	}
 	// css
-	if (!fs.existsSync(`${cssDevDir}/${cssDev}`)) {
-		fs.writeFileSync(`${cssDevDir}/${cssDev}`, '');
+	if (!fs.existsSync(`${cssDevDir}/${cssDev}`)) {                // main.scss
+		fs.writeFileSync(`${cssDevDir}/${cssDev}`, cssDevContent);
 		console.log(`Файл "${cssDev}" успешно создан`);
 	} else {
 		console.log(`Файл "${cssDev}" уже существует`);
 	}
-	if (!fs.existsSync(`${rootDir}/${cssResult}`)) {
+	if (!fs.existsSync(`${rootDir}/${cssResult}`)) {             // main.min.css
 		fs.writeFileSync(`${rootDir}/${cssResult}`, '');
 		console.log(`Файл "${cssResult}" успешно создан`);
 	} else {
 		console.log(`Файл "${cssResult}" уже существует`);
 	}
-	if (!fs.existsSync(`${jsDevDir}/${jsDev}`)) {
-		fs.writeFileSync(`${jsDevDir}/${jsDev}`, '');
+	// js
+	if (!fs.existsSync(`${jsDevDir}/${jsDev}`)) {           // index.js
+		fs.writeFileSync(`${jsDevDir}/${jsDev}`, jsDevContent);
 		console.log(`Файл "${jsDev}" успешно создан`);
 	} else {
 		console.log(`Файл "${jsDev}" уже существует`);
 	}
-	if (!fs.existsSync(`${rootDir}/${jsResult}`)) {
+	if (!fs.existsSync(`${rootDir}/${jsResult}`)) {         // index.min.js
 		fs.writeFileSync(`${rootDir}/${jsResult}`, '');
 		console.log(`Файл "${jsResult}" успешно создан`);
 	} else {
@@ -137,7 +195,23 @@ function createProject(cb) {
 	}
 	cb();
 }
-exports.create = series(createProject)
+
+function copyCssService() {
+	return src(cssServiceFiles, { allowEmpty: true })
+		.pipe(dest(`${cssDevDir}/${serviceDir}/`))
+}
+
+function copyJsService() {
+	return src(jsServiceFiles, { allowEmpty: true })
+		.pipe(dest(`${jsDevDir}/${serviceDir}/`))
+}
+
+function copyImgService() {
+	return src(`${libDir}/img/${faviconDir}/${faviconFile}`, { allowEmpty: true })
+		.pipe(dest(`${imgDevDir}/${faviconDir}/`))
+}
+
+exports.create = series(createProject, copyCssService, copyJsService, copyImgService)
 
 // SERVER
 const browserSync = require('browser-sync').create();
@@ -162,7 +236,7 @@ exports.watch = startWatch;
 
 // HTML
 function cleanHtml() {
-	return src([`${htmlResulPages}/*`, `${rootDir}/index.html`], { allowEmpty: true })
+	return src([`${htmlResultPages}/*`, `${rootDir}/index.html`], { allowEmpty: true })
 		.pipe(gulpClean())
 }
 function htmlIndexDev() {
@@ -174,7 +248,7 @@ function htmlIndexDev() {
 function htmlPagesDev() {
 	return src([`${htmlDevPages}/**/*.html`, `!${htmlDevPages}/index.html`], { allowEmpty: true })
 		.pipe(include({ includePaths: `${htmlDevComponents}` }))
-		.pipe(dest(`${htmlResulPages}/`))
+		.pipe(dest(`${htmlResultPages}/`))
 		.pipe(browserSync.stream())
 }
 function htmlIndexBuild() {
@@ -185,39 +259,40 @@ function htmlIndexBuild() {
 function htmlPagesBuild() {
 	return src([`${htmlDevPages}/**/*.html`, `!${htmlDevPages}/index.html`], { allowEmpty: true })
 		.pipe(include({ includePaths: `${htmlDevComponents}` }))
-		.pipe(dest(`${htmlResulPages}/`))
+		.pipe(dest(`${htmlResultPages}/`))
 }
 exports.html = series(cleanHtml, htmlIndexDev, htmlPagesDev)
 
 // STYLE
-const scss = require('gulp-sass')(require('sass'));
-const autoprefixer = require('gulp-autoprefixer');
-const cleanCss = require('gulp-clean-css');
+const gulpSass = require('gulp-sass');
+const dartSass = require('sass');
+const sass = gulpSass(dartSass);
+const postCss = require('gulp-postcss');
+const autoprefixer = require('autoprefixer');
+const cssnano = require('cssnano');
 
 function stylesDev() {
-	return src([
-		`node_modules/swiper/swiper-bundle.min.css`,   // библиотеки
-		`${cssDevDir}/**/*`,
-		`${cssDevDir}/${cssDev}`
-	])
-		.pipe(scss())
+	return src([`${cssDevDir}/**/*`, `${cssDevDir}/**/_*.*`])
+		.pipe(sass().on('error', sass.logError))
+		.pipe(postCss([
+			autoprefixer({ grid: 'autoplace' }),
+			cssnano({ preset: ['default', { discardComments: { removeAll: true } }] })
+		]))
 		.pipe(concat(cssResult))
-		.pipe(autoprefixer({ overrideBrowserslist: ['last 10 versions'], grid: true }))
-		.pipe(cleanCss({ level: { 1: { specialComments: 0 } }, format: 'beautify' }))  // 'keep-breaks' or 'beautify'
 		.pipe(dest(rootDir))
-		.pipe(browserSync.stream())            // триггер browserSync для отрисовки страницы
+		.pipe(browserSync.stream());
 }
+
 function stylesBuild() {
-	return src([
-		`node_modules/swiper/swiper-bundle.min.css`,   // библиотеки
-		`${cssDevDir}/**/*`,
-		`${cssDevDir}/${cssDev}`
-	])
-		.pipe(scss())
+	return src([`${cssDevDir}/**/*`, `${cssDevDir}/**/_*.*`])
+		.pipe(sass().on('error', sass.logError))
+		.pipe(postCss([
+			autoprefixer({ grid: 'autoplace' }),
+			cssnano({ preset: ['default', { discardComments: { removeAll: true } }] })
+		]))
 		.pipe(concat(cssResult))
-		.pipe(autoprefixer({ overrideBrowserslist: ['last 10 versions'], grid: true }))
-		.pipe(cleanCss({ level: { 1: { specialComments: 0 } }, format: 'keep-breaks' }))  // 'keep-breaks' or 'beautify'
 		.pipe(dest(rootDir))
+		.pipe(browserSync.stream());
 }
 exports.styles = stylesDev;
 
@@ -368,6 +443,10 @@ function copySprite() {
 		.pipe(flatten())
 		.pipe(dest(`${imgResultDir}/svg/`))
 }
+function copyFavicon() {
+	return src(`${imgDevDir}/${faviconDir}/${faviconFile}`)
+		.pipe(dest(`${imgResultDir}/${faviconDir}/`))
+}
 
 exports.imgconvert = parallel(imgCompress, imgWebp, imgAvif);
 exports.svg = series(imgSprite, copySprite)
@@ -451,6 +530,7 @@ exports.default = series(
 		imgCompress,
 		imgWebp,
 		imgAvif,
+		copyFavicon,
 		// copyFiles,
 		series(imgSprite, copySprite),
 		series(startFonter, startTtf2woff, startTtf2woff2, copyFonts)),
@@ -465,6 +545,7 @@ exports.build = series(
 		imgCompress,
 		imgWebp,
 		imgAvif,
+		copyFavicon,
 		// copyFiles,
 		series(imgSprite, copySprite),
 		series(startFonter, startTtf2woff, startTtf2woff2, copyFonts)),
